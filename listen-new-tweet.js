@@ -298,7 +298,7 @@ function getUserRestId(authorization, profile) {
     xhr.onload = function () {
       if (xhr.status >= 200 && xhr.status < 300) {
         const data = JSON.parse(xhr.response);
-        const id = data.user_result_by_screen_name.result.rest_id;
+        const id = data.data.user_result_by_screen_name.result.rest_id;
         localStorage.setItem(`save-profile-id-${profile}`, id);
         resolve(id);
       } else {
