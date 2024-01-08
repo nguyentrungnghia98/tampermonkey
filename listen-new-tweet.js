@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Twitter bot
 // @namespace    http://tampermonkey.net/
-// @version      4.0
+// @version      5.0
 // @description  notify new tweet
 // @author       You
 // @match        https://twitter.com/*
@@ -318,7 +318,6 @@ async function initTweetsStorage(authorization, userId) {
   const result = [];
   let cursor = '';
 
-  console.log('initTweetsStorage', initTweetsStorage);
   for (let i = 0; i < limit / per; i++) {
     try {
       const resp = await queryTweets(authorization, userId, cursor);
