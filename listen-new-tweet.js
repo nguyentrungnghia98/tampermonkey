@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Twitter bot
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      3.0
 // @description  notify new tweet
 // @author       You
 // @match        https://twitter.com/*
@@ -469,8 +469,7 @@ async function startBot() {
     intervals = {};
     return;
   }
-  document.querySelector("#twitter-bot-start").innerHTML = "Stop";
-  isBotStarted = true;
+
 
   const old = localStorage.getItem("twitter-bot-storage")
     ? JSON.parse(localStorage.getItem("twitter-bot-storage"))
@@ -500,7 +499,7 @@ async function startBot() {
     const keywordValue = document.querySelector(
       `#tweet-keyword-${profile.createdAt}`
     ).value;
-    if (!profile) {
+    if (!profileValue) {
       return alert(`Please enter profile ${i + 1}!`);
     }
     profiles.push({
@@ -509,6 +508,9 @@ async function startBot() {
       keyword: keywordValue,
     });
   }
+
+  document.querySelector("#twitter-bot-start").innerHTML = "Stop";
+  isBotStarted = true;
 
   localStorage.setItem(
     "twitter-bot-storage",
