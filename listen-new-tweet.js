@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Twitter bot
 // @namespace    http://tampermonkey.net/
-// @version      3.0
+// @version      4.0
 // @description  notify new tweet
 // @author       You
 // @match        https://twitter.com/*
@@ -312,12 +312,72 @@ function getUserRestId(authorization, profile) {
   });
 }
 
-function getTweets(authorization, userId, keyword) {
+async function initTweetsStorage(authorization, userId) {
+  const limit = 100;
+  const per = 20;
+  const result = [];
+  let cursor = '';
+
+  console.log('initTweetsStorage', initTweetsStorage);
+  for (let i = 0; i < limit / per; i++) {
+    try {
+      const resp = await queryTweets(authorization, userId, cursor);
+      console.log('resp', i, resp);
+      result.push(...resp.tweets);
+      cursor = resp.cursor;
+      if (!resp.tweets.length) {
+        break;
+      }
+    } catch (error) {
+      console.log('init error:', {
+        error, userId
+      });
+    }
+  }
+
+  console.log('init result', result);
+  localStorage.setItem(`tweets_storage_${userId}`, JSON.stringify(result));
+}
+
+async function getNewTweets(authorization, userId, keyword) {
+  const {tweets} = await queryTweets(authorization, userId);
+  const result = tweets;
+  const exist = localStorage.getItem(`tweets_storage_${userId}`)
+    ? JSON.parse(localStorage.getItem(`tweets_storage_${userId}`))
+    : null;
+  console.log("exist", {
+    exist,
+    current: result,
+  });
+  if (exist) {
+    const nonExist = result.filter((item) => {
+      return !exist.find((el) => el.tweetId === item.tweetId);
+    });
+    if (nonExist.length) {
+      localStorage.setItem(
+        `tweets_storage_${userId}`,
+        JSON.stringify(nonExist.concat(exist))
+      );
+      return nonExist.filter((item) =>
+        item.content.toLocaleLowerCase().includes(keyword.toLocaleLowerCase())
+      );
+    } else {
+      return [];
+    }
+  } else {
+    localStorage.setItem(`tweets_storage_${userId}`, JSON.stringify(result));
+    return [];
+  }
+}
+
+function queryTweets(authorization, userId, cursor) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open(
       "GET",
-      `https://twitter.com/i/api/graphql/V1ze5q3ijDS1VeLwLY0m7g/UserTweets?variables=%7B%22userId%22%3A%22${userId}%22%2C%22count%22%3A20%2C%22includePromotedContent%22%3Atrue%2C%22withQuickPromoteEligibilityTweetFields%22%3Atrue%2C%22withVoice%22%3Atrue%2C%22withV2Timeline%22%3Atrue%7D&features=%7B%22responsive_web_graphql_exclude_directive_enabled%22%3Atrue%2C%22verified_phone_label_enabled%22%3Afalse%2C%22creator_subscriptions_tweet_preview_api_enabled%22%3Atrue%2C%22responsive_web_graphql_timeline_navigation_enabled%22%3Atrue%2C%22responsive_web_graphql_skip_user_profile_image_extensions_enabled%22%3Afalse%2C%22c9s_tweet_anatomy_moderator_badge_enabled%22%3Atrue%2C%22tweetypie_unmention_optimization_enabled%22%3Atrue%2C%22responsive_web_edit_tweet_api_enabled%22%3Atrue%2C%22graphql_is_translatable_rweb_tweet_is_translatable_enabled%22%3Atrue%2C%22view_counts_everywhere_api_enabled%22%3Atrue%2C%22longform_notetweets_consumption_enabled%22%3Atrue%2C%22responsive_web_twitter_article_tweet_consumption_enabled%22%3Afalse%2C%22tweet_awards_web_tipping_enabled%22%3Afalse%2C%22freedom_of_speech_not_reach_fetch_enabled%22%3Atrue%2C%22standardized_nudges_misinfo%22%3Atrue%2C%22tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled%22%3Atrue%2C%22rweb_video_timestamps_enabled%22%3Atrue%2C%22longform_notetweets_rich_text_read_enabled%22%3Atrue%2C%22longform_notetweets_inline_media_enabled%22%3Atrue%2C%22responsive_web_media_download_video_enabled%22%3Afalse%2C%22responsive_web_enhance_cards_enabled%22%3Afalse%7D`,
+      `https://twitter.com/i/api/graphql/V1ze5q3ijDS1VeLwLY0m7g/UserTweets?variables=%7B%22userId%22%3A%22${userId}%22%2C%22count%22%3A20%2C${
+        cursor ? `%22cursor%22%3A%22${encodeURIComponent(cursor)}%22%2C` : ""
+      }%22includePromotedContent%22%3Atrue%2C%22withQuickPromoteEligibilityTweetFields%22%3Atrue%2C%22withVoice%22%3Atrue%2C%22withV2Timeline%22%3Atrue%7D&features=%7B%22responsive_web_graphql_exclude_directive_enabled%22%3Atrue%2C%22verified_phone_label_enabled%22%3Afalse%2C%22creator_subscriptions_tweet_preview_api_enabled%22%3Atrue%2C%22responsive_web_graphql_timeline_navigation_enabled%22%3Atrue%2C%22responsive_web_graphql_skip_user_profile_image_extensions_enabled%22%3Afalse%2C%22c9s_tweet_anatomy_moderator_badge_enabled%22%3Atrue%2C%22tweetypie_unmention_optimization_enabled%22%3Atrue%2C%22responsive_web_edit_tweet_api_enabled%22%3Atrue%2C%22graphql_is_translatable_rweb_tweet_is_translatable_enabled%22%3Atrue%2C%22view_counts_everywhere_api_enabled%22%3Atrue%2C%22longform_notetweets_consumption_enabled%22%3Atrue%2C%22responsive_web_twitter_article_tweet_consumption_enabled%22%3Afalse%2C%22tweet_awards_web_tipping_enabled%22%3Afalse%2C%22freedom_of_speech_not_reach_fetch_enabled%22%3Atrue%2C%22standardized_nudges_misinfo%22%3Atrue%2C%22tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled%22%3Atrue%2C%22rweb_video_timestamps_enabled%22%3Atrue%2C%22longform_notetweets_rich_text_read_enabled%22%3Atrue%2C%22longform_notetweets_inline_media_enabled%22%3Atrue%2C%22responsive_web_media_download_video_enabled%22%3Afalse%2C%22responsive_web_enhance_cards_enabled%22%3Afalse%7D`,
       true
     );
     setHeaders(xhr, authorization);
@@ -326,10 +386,10 @@ function getTweets(authorization, userId, keyword) {
       if (xhr.status >= 200 && xhr.status < 300) {
         const data = JSON.parse(xhr.response);
         const result = [];
-        console.log("data", data);
+        let cursor = '';
         data.data.user.result.timeline_v2.timeline.instructions.forEach(
           (ins) => {
-            if (ins.entry) {
+            if (!cursor && ins.entry) {
               try {
                 const legacy =
                   ins.entry.content.itemContent.tweet_results.result.legacy;
@@ -341,53 +401,31 @@ function getTweets(authorization, userId, keyword) {
               } catch {}
             }
             if (ins.entries) {
-              ins.entries.map((entry) => {
+              for (const entry of ins.entries) {
                 try {
-                  const legacy =
-                    entry.content.itemContent.tweet_results.result.legacy;
-                  result.push({
-                    tweetId: legacy.conversation_id_str,
-                    content: legacy.full_text,
-                    created_at: new Date(legacy.created_at).getTime(),
-                  });
+                  if (entry.entryId.startsWith('tweet-')) {
+                    const legacy =
+                      entry.content.itemContent.tweet_results.result.legacy;
+                    const newValue = {
+                      tweetId: legacy.conversation_id_str,
+                      content: legacy.full_text,
+                      created_at: new Date(legacy.created_at).getTime(),
+                    };
+                    if (!result.find(item => item.tweetId === newValue.tweetId)) {
+                      result.push(newValue);
+                    }
+                  } else if (entry.entryId.startsWith('cursor-bottom-')) {
+                    cursor = entry.content.value;
+                  }
                 } catch {}
-              });
+              }
             }
           }
         );
-        const exist = localStorage.getItem(`tweets_storage_${userId}`)
-          ? JSON.parse(localStorage.getItem(`tweets_storage_${userId}`))
-          : null;
-        console.log("exist", {
-          exist,
-          current: result,
+        resolve({
+          tweets: result,
+          cursor
         });
-        if (exist) {
-          const nonExist = result.filter((item) => {
-            return !exist.find((el) => el.tweetId === item.tweetId);
-          });
-          if (nonExist.length) {
-            localStorage.setItem(
-              `tweets_storage_${userId}`,
-              JSON.stringify(nonExist.concat(exist))
-            );
-            resolve(
-              nonExist.filter((item) =>
-                item.content
-                  .toLocaleLowerCase()
-                  .includes(keyword.toLocaleLowerCase())
-              )
-            );
-          } else {
-            resolve([]);
-          }
-        } else {
-          localStorage.setItem(
-            `tweets_storage_${userId}`,
-            JSON.stringify(result)
-          );
-          resolve([]);
-        }
       } else {
         reject(xhr.response);
       }
@@ -407,28 +445,25 @@ function formatDate(time) {
 let isBotStarted = false;
 let intervals = {};
 
-async function checkProfile(authorization, profile, isReset) {
+async function checkProfile(authorization, profile, userId) {
   try {
-    const userId = await getUserRestId(authorization, profile.profile);
-    console.log("userId", userId);
-    if (isReset) {
-      localStorage.removeItem(`tweets_storage_${userId}`)
-    }
-    const tweets = await getTweets(authorization, userId, profile.keyword);
+    const tweets = await getNewTweets(
+      authorization,
+      userId,
+      profile.keyword,
+    );
     console.log("tweets", tweets);
     if (isBotStarted && tweets.length) {
-      const tweetsData = tweets.map(
-        ({ tweetId, content, created_at }) => {
-          return {
-            id: tweetId,
-            content: `#twitter #new_tweet"\n\n🔊 New Tweet 🔊\n\n<a href='https://twitter.com/${
-              profile.profile
-            }/status/${tweetId}'>${profile.profile}</a> - ${formatDate(
-              created_at
-            )}\n\n${content}`,
-          };
-        }
-      );
+      const tweetsData = tweets.map(({ tweetId, content, created_at }) => {
+        return {
+          id: tweetId,
+          content: `#twitter #new_tweet"\n\n🔊 New Tweet 🔊\n\n<a href='https://twitter.com/${
+            profile.profile
+          }/status/${tweetId}'>${profile.profile}</a> - ${formatDate(
+            created_at
+          )}\n\n${content}`,
+        };
+      });
       const summary = tweetsData.map((item) => item.content).join("");
       document.querySelector(".twitter-bot--list").insertAdjacentHTML(
         "beforeend",
@@ -469,7 +504,6 @@ async function startBot() {
     intervals = {};
     return;
   }
-
 
   const old = localStorage.getItem("twitter-bot-storage")
     ? JSON.parse(localStorage.getItem("twitter-bot-storage"))
@@ -532,11 +566,22 @@ async function startBot() {
       index === profiles.findIndex((el) => el.profile === value.profile)
   );
 
-  validProfiles.forEach((profile) => {
-    checkProfile(authorization, profile, true);
-    intervals[profile.profile] = setInterval(() => {
-      checkProfile(authorization, profile);
-    }, interval);
+  validProfiles.forEach(async (profile) => {
+    try {
+      const userId = await getUserRestId(authorization, profile.profile);
+      console.log("userId", userId);
+      await initTweetsStorage(authorization, userId);
+      if (isBotStarted) {
+        intervals[profile.profile] = setInterval(() => {
+          checkProfile(authorization, profile, userId);
+        }, interval);
+      }
+    } catch (error) {
+      console.log('check profile error:', {
+        error,
+        profile
+      })
+    }
   });
 }
 
