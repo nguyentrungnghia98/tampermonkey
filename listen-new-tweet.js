@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Twitter bot
 // @namespace    http://tampermonkey.net/
-// @version      5.0
+// @version      6.0
 // @description  notify new tweet
 // @author       You
 // @match        https://twitter.com/*
@@ -481,7 +481,7 @@ async function checkProfile(authorization, profile, userId) {
           telegram: {
             chat_id: "-1001879315361",
             botToken: "6819334289:AAE0kpPSUgOfnJM-USCb_rSVpr3trXTUj7Y",
-            message_thread_id: "103346",
+            message_thread_id: "105371",
           },
         },
       });
