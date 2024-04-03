@@ -468,8 +468,6 @@ async function startBot() {
 
   localStorage.setItem("photon-bot-storage", JSON.stringify(data));
 
-  document.querySelector(".photon-bot--list").innerHTML = "";
-
   checkPair(data);
   intervalCurrent = setInterval(() => {
     checkPair(data);
