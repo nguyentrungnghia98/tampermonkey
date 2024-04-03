@@ -538,7 +538,7 @@ async function startBot() {
           </div>
        </div>
        <div class="photon-bot--form" style="display: flex;">
-       <div class="bot-form--content" style="margin-top: auto; width: 100%;">
+       <div class="bot-form--content" style="margin-top: 76px; width: 100%;">
        <div class="bot-form--tweets">
        <label for="ignoreAlreadyNotiSeconds">Ignore Already Noti Seconds:</label>
        <input value="${ignoreAlreadyNotiSeconds}" id="photon-bot-ignoreAlreadyNotiSeconds" placeholder="Enter Ignore Already Noti Seconds" name="ignoreAlreadyNotiSeconds">
