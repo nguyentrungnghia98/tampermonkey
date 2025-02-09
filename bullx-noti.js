@@ -43,7 +43,11 @@ function convertKNotation(numberString) {
   Notification.requestPermission();
 
   const filterBuyAmount = 0;
-  const filterBuy = true;
+// để 0 thì không filter amount
+// 100 thì filter lệnh > $100
+const filterBuy = true;
+// true thì filter lệnh buy ra thôi
+// false thì noti cả buy + sell
 
   setInterval(() => {
     try {
