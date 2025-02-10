@@ -47,7 +47,7 @@ function convertKNotation(numberString) {
   let isFirst = true;
   setInterval(() => {
     try {
-      const listEl = document.querySelector(".b-table .b-table-body .w-full.h-full div div div");
+      const listEl = document.querySelector(".shadow-2xl.drop-shadow-xl.relative .b-table .b-table-body .w-full.h-full div div div") || document.querySelector(".ant-modal-content .b-table .b-table-body .w-full.h-full div div div");
       if (listEl && listEl.children.length) {
         const alerts = [...listEl.children].map(item => {
           const [txEl, tokenEl, usdEl, , walletEl] = item.querySelectorAll(".b-table-cell");
