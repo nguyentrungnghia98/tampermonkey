@@ -43,15 +43,11 @@ function convertKNotation(numberString) {
   Notification.requestPermission();
 
   const filterBuyAmount = 0;
-// để 0 thì không filter amount
-// 100 thì filter lệnh > $100
-const filterBuy = true;
-// true thì filter lệnh buy ra thôi
-// false thì noti cả buy + sell
-
+  const filterBuy = true;
+  let isFirst = true;
   setInterval(() => {
     try {
-      const listEl = document.querySelector(".ant-modal-body.wallet-manager .b-table-body .w-full.h-full div div div");
+      const listEl = document.querySelector(".b-table .b-table-body .w-full.h-full div div div");
       if (listEl && listEl.children.length) {
         const alerts = [...listEl.children].map(item => {
           const [txEl, tokenEl, usdEl, , walletEl] = item.querySelectorAll(".b-table-cell");
@@ -66,6 +62,10 @@ const filterBuy = true;
           const wallet = walletEl.querySelector("span.text-yellow-500").innerText
           return {time, action, url, tokenName, usd, wallet, tx};
         });
+          if (isFirst) {
+console.log(alerts)
+              isFirst = false;
+}
         const findItem = alerts.find(item => {
           return !localStorage.getItem(item.tx) && item.time.includes('s') && (!filterBuyAmount || item.usd >= filterBuyAmount) && (filterBuy ? item.action === 'B' : true);
         });
