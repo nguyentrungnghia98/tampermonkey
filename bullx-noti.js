@@ -42,15 +42,24 @@ function convertKNotation(numberString) {
 
   Notification.requestPermission();
 
-  const filterBuyAmount = 0;
-  const filterBuy = true;
+    // để 0 thì không filter amount
+    // 100 thì filter lệnh > $100
+    const filterBuyAmount = 0;
+
+    // true thì filter lệnh buy ra thôi
+    // false thì noti cả buy + sell
+    const filterBuy = true;
+
+    const filterMarketCap = 10000;
+
+
   let isFirst = true;
   setInterval(() => {
     try {
       const listEl = document.querySelector(".shadow-2xl.drop-shadow-xl.relative .b-table .b-table-body .w-full.h-full div div div") || document.querySelector(".ant-modal-content .b-table .b-table-body .w-full.h-full div div div");
       if (listEl && listEl.children.length) {
         const alerts = [...listEl.children].map(item => {
-          const [txEl, tokenEl, usdEl, , walletEl] = item.querySelectorAll(".b-table-cell");
+          const [txEl, tokenEl, usdEl, marketCapEl, walletEl] = item.querySelectorAll(".b-table-cell");
           const [actionEl, tokenAEl] = tokenEl.firstChild.children
 
           const tx = txEl.querySelector("a").href;
@@ -59,20 +68,23 @@ function convertKNotation(numberString) {
           const url = tokenAEl.href;
           const tokenName = tokenAEl.innerText;
           const usd = convertKNotation(usdEl.innerText.slice(1));
+          const marketCap = convertKNotation(marketCapEl.innerText.slice(1));
           const wallet = walletEl.querySelector("span.text-yellow-500").innerText
-          return {time, action, url, tokenName, usd, wallet, tx};
+          return {time, action, url, tokenName, usd, wallet, tx, marketCap, marketCapDisplay: marketCapEl.innerText.slice(1)};
         });
           if (isFirst) {
 console.log(alerts)
               isFirst = false;
 }
         const findItem = alerts.find(item => {
-          return !localStorage.getItem(item.tx) && item.time.includes('s') && (!filterBuyAmount || item.usd >= filterBuyAmount) && (filterBuy ? item.action === 'B' : true);
+          return !localStorage.getItem(item.tx) && item.time.includes('s') && (!filterBuyAmount || item.usd >= filterBuyAmount) && item.marketCap >= filterMarketCap && (filterBuy ? item.action === 'B' : true);
         });
 
         if (findItem) {
           localStorage.setItem(findItem.tx, "true");
-          const noti = new Notification(`${findItem.wallet} ${findItem.action === "B"? "buy": "sell"} $${findItem.usd} ${findItem.tokenName}`)
+          const noti = new Notification(`${findItem.wallet} ${findItem.action === "B"? "buy": "sell"} $${findItem.usd} ${findItem.tokenName}`, {
+body: `at ${findItem.marketCapDisplay}`
+})
           noti.addEventListener("click", e => {
             window.open(findItem.url);
           });
