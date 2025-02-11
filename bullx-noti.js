@@ -52,6 +52,8 @@ function convertKNotation(numberString) {
 
     const filterMarketCap = 10000;
 
+    const autoOpenUrl = true;
+
 
   let isFirst = true;
   setInterval(() => {
@@ -82,11 +84,17 @@ console.log(alerts)
 
         if (findItem) {
           localStorage.setItem(findItem.tx, "true");
+            let newWindow;
+            if (autoOpenUrl) newWindow = window.open(findItem.url);
           const noti = new Notification(`${findItem.wallet} ${findItem.action === "B"? "buy": "sell"} $${findItem.usd} ${findItem.tokenName}`, {
 body: `at ${findItem.marketCapDisplay}`
 })
           noti.addEventListener("click", e => {
-            window.open(findItem.url);
+            if (autoOpenUrl) {
+               if (newWindow) {newWindow.focus()} else {window.focus()};
+            } else {
+                window.open(findItem.url);
+            }
           });
           document.getElementById("mySound").play();
         }
