@@ -75,8 +75,22 @@ async function getFocusTabFn(tabId, windowId) {
   }
 }
 
+async function ping() {
+  try {
+    await chrome.runtime.sendMessage("aepfgcacooaadbcjdkalijfkgljogcbl", {
+      channel: "pumpfun-launch",
+      method: "ping",
+      params: {},
+    });
+  } catch {}
+}
+
 (function () {
   "use strict";
+
+  setInterval(() => {
+    ping();
+  }, 1000);
 
   document.body.insertAdjacentHTML(
     "beforeend",
