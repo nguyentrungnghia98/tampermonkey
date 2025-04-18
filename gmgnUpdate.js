@@ -28,7 +28,22 @@ function sleep(ms) {
           if (!a.href.includes("bullx")) {
             const href = `https://neo.bullx.io/terminal?chainId=1399811149&address=${
               a.href.split("/").slice(-1)[0]
-            }&maker=${location.href.split("/").slice(-1)[0]}`;
+            }&maker=${location.href.split("/").slice(-1)[0].split("_").slice(-1)[0]}`;
+            a.href = href;
+            a.childNodes[1].href = href;
+          }
+        });
+      }
+      if (location.href.includes("base/address")) {
+        const rows = document.querySelectorAll(
+          "#tabs-leftTabs--tabpanel-0 .g-table-tbody .g-table-row"
+        );
+        rows.forEach((row) => {
+          const a = row.querySelector("a");
+          if (!a.href.includes("maker=")) {
+            const href = `https://gmgn.ai/base/token/${
+              a.href.split("/").slice(-1)[0]
+            }?maker=${location.href.split("/").slice(-1)[0].split("_").slice(-1)[0]}`;
             a.href = href;
             a.childNodes[1].href = href;
           }
