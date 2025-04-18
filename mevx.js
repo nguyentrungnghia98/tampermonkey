@@ -54,34 +54,43 @@ function realClick(el) {
 }
 // Example usage
 
-(function () {
-  //////////////////
 
-  const urlParams = new URLSearchParams(window.location.search);
-
-  // auto thêm maker
-  let success = false;
+function initClick(element) {
+let success = false;
   const interval = setInterval(async () => {
     if (success) {
       clearInterval(interval);
       return;
     }
-    console.log("RUN----");
+
     try {
-      if (location.href.includes("mevx.io/solana/")) {
-        const matched = findElementWithDirectText("Auto TP/SL");
-        if (matched) {
-          realClick(matched.parentNode.querySelector("input"));
+
+        const elementValue = typeof element === 'function'? element(): element;
+        if (elementValue) {
+          realClick(elementValue);
         } else {
           throw new Error("not found");
         }
-
-        realClick(findElementWithDirectText("Top Traders"));
-        realClick(findElementWithDirectText("5M"));
-      }
       success = true;
     } catch (error) {
       console.log("error 1", error);
     }
   }, 2000);
+}
+
+(function () {
+  //////////////////
+
+  const urlParams = new URLSearchParams(window.location.search);
+if (location.href.includes("mevx.io/solana/")) {
+    initClick(() => {
+    const matched = findElementWithDirectText("Auto TP/SL");
+        if (matched) {
+          return matched.parentNode.querySelector("input");
+        }
+    });
+initClick(() => findElementWithDirectText("Top Traders"));
+    initClick(() => findElementWithDirectText("5M"));
+    }
+  
 })();
