@@ -75,7 +75,7 @@ let success = false;
     } catch (error) {
       console.log("error 1", error);
     }
-  }, 1000);
+  }, 200);
 }
 
 (function () {
@@ -102,5 +102,5 @@ initClick(() => document.querySelector(".fixed button svg").parentNode);
     } catch (error) {
       console.log("error 1", error);
     }
-  }, 2000);
+  }, 200);
 })();

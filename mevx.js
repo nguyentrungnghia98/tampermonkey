@@ -54,9 +54,8 @@ function realClick(el) {
 }
 // Example usage
 
-
 function initClick(element) {
-let success = false;
+  let success = false;
   const interval = setInterval(async () => {
     if (success) {
       clearInterval(interval);
@@ -64,33 +63,119 @@ let success = false;
     }
 
     try {
-
-        const elementValue = typeof element === 'function'? element(): element;
-        if (elementValue) {
-          realClick(elementValue);
-        } else {
-          throw new Error("not found");
-        }
+      const elementValue = typeof element === "function" ? element() : element;
+      if (elementValue) {
+        realClick(elementValue);
+      } else {
+        throw new Error("not found");
+      }
       success = true;
     } catch (error) {
       console.log("error 1", error);
     }
-  }, 2000);
+  }, 1000);
 }
 
 (function () {
   //////////////////
 
   const urlParams = new URLSearchParams(window.location.search);
-if (location.href.includes("mevx.io/solana/")) {
+  if (location.href.includes("mevx.io/solana/")) {
     initClick(() => {
-    const matched = findElementWithDirectText("Auto TP/SL");
-        if (matched) {
-          return matched.parentNode.querySelector("input");
-        }
+      const matched = findElementWithDirectText("Auto TP/SL");
+      if (matched) {
+        return matched.parentNode.querySelector("input");
+      }
     });
-initClick(() => findElementWithDirectText("Top Traders"));
+    initClick(() => findElementWithDirectText("Top Traders"));
     initClick(() => findElementWithDirectText("5M"));
+  }
+
+  // dex info
+  function getChain() {
+    if (location.href.includes("/bsc/")) return "bsc";
+    if (location.href.includes("/solana/")) return "solana";
+    if (location.href.includes("/base/")) return "base";
+    if (location.href.includes("/eth/")) return "eth";
+  }
+  async function getDexInfo(address) {
+    let paids = [];
+    try {
+      const resp = await fetch(
+        `https://api.dexscreener.com/orders/v1/${getChain()}/${address}`
+      );
+      const json = await resp.json();
+      paids = json
+        .filter((item) => item.status === "approved")
+        .map((item) => item.type);
+    } catch (error) {
+      console.log("error", error);
     }
-  
+
+    let boost = 0;
+
+    try {
+      const resp = await fetch(
+        `https://api.dexscreener.com/token-pairs/v1/${getChain()}/${address}`
+      );
+      const json = await resp.json();
+      boost = json[0].boosts.active;
+    } catch (error) {
+      console.log("error", error);
+    }
+    return { paids, boost };
+  }
+
+  function getAddress() {
+    try {
+      const refLink =
+        findElementWithDirectText("REF link").parentNode.querySelector(
+          "button"
+        ).textContent;
+      return refLink.split("/").slice(-1)[0].split("?")[0];
+    } catch (error) {
+      console.log("getAddress error", error);
+    }
+  }
+  async function insertDexInfo() {
+    console.log("----insertDexInfo");
+    try {
+      const address = getAddress();
+      if (!address) throw new Error("address not found!");
+      const box = document.querySelector(
+        "#root div.flex.flex-col.gap-2.rounded-lg.bg-dark-500 > div.grid.grid-cols-2.gap-1.px-4"
+      );
+      let dexPaid = document.getElementById("custom-dex-paid");
+      let dexBoost = document.getElementById("custom-dex-boost");
+      if (!dexPaid || !dexBoost) {
+        box.innerHTML = `${box.innerHTML}<div role="button" tabindex="0" aria-disabled="false" aria-roledescription="sortable" aria-describedby="DndDescribedBy-0" class="rounded-lg bg-dark-400 px-2 py-1 lg:p-2" style="" id="custom-dex-paid"></div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="sortable" aria-describedby="DndDescribedBy-0" class="rounded-lg bg-dark-400 px-2 py-1 lg:p-2" style="" id="custom-dex-boost"></div>`;
+        dexPaid = document.getElementById("custom-dex-paid");
+        dexBoost = document.getElementById("custom-dex-boost");
+      }
+
+      const { paids, boost } = await getDexInfo(address);
+
+      dexPaid.innerHTML = `<p class="text-textSub text-[12px] uppercase truncate">Dex paid${
+        paids.length ? "✅" : ""
+      }</p>${
+        paids.length
+          ? paids.map((item) => `<h1 class="text-[11px]">${item}</h1>`).join("")
+          : ""
+      }`;
+
+      dexBoost.innerHTML = `<p class="text-textSub text-[12px] uppercase truncate">Dex boost ${
+        boost > 0 ? "⚡️" : ""
+      }</p>
+     <h1 class="text-[14px] uppercase font-bold" style="color: #f0b90b;">${
+       boost || "❌"
+     }</h1>`;
+    } catch (error) {
+      console.log("insertDexInfo error", error);
+    }
+  }
+
+  sleep(2000).then(() => insertDexInfo());
+  setInterval(() => {
+    insertDexInfo();
+  }, 10000);
 })();
