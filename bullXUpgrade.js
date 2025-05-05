@@ -8,6 +8,64 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=twitter.com
 // @grant        none
 // ==/UserScript==
+function addGlobalStyle(css) {
+  var head, style;
+  head = document.getElementsByTagName("head")[0];
+  if (!head) {
+    return;
+  }
+  style = document.createElement("style");
+  style.type = "text/css";
+  style.innerHTML = css.replace(/;/g, " !important;");
+  head.appendChild(style);
+}
+const css = `
+    .toast-container1 {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+  }
+
+  .toast1 {
+    position: relative;
+    background-color: #187b47 ;
+    color: #fff;
+    padding: 12px 20px;
+    margin-top: 10px;
+    border-radius: 8px;
+    font-size: 15px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  }
+
+  .toast1.show1 {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .toast1 .close-btn1 {
+    position: absolute;
+    top: 8px;
+    right: 4px;
+    font-weight: bold;
+    font-size: 20px;
+    color: #aaa;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .toast1:hover .close-btn1 {
+    opacity: 1;
+  }
+
+  .toast1 .close-btn1:hover {
+    color: #fff;
+  }
+`;
 
 function setNativeValue(element, value) {
   const { set: valueSetter } =
@@ -29,7 +87,6 @@ function setNativeValue(element, value) {
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
 
 function findElementWithDirectText(text) {
   const elements = document.querySelectorAll("*");
@@ -55,9 +112,8 @@ function realClick(el) {
 }
 // Example usage
 
-
 function initClick(element) {
-let success = false;
+  let success = false;
   const interval = setInterval(async () => {
     if (success) {
       clearInterval(interval);
@@ -65,13 +121,12 @@ let success = false;
     }
 
     try {
-
-        const elementValue = typeof element === 'function'? element(): element;
-        if (elementValue) {
-          realClick(elementValue);
-        } else {
-          throw new Error("not found");
-        }
+      const elementValue = typeof element === "function" ? element() : element;
+      if (elementValue) {
+        realClick(elementValue);
+      } else {
+        throw new Error("not found");
+      }
       success = true;
     } catch (error) {
       console.log("error 1", error);
@@ -80,6 +135,37 @@ let success = false;
 }
 
 (function () {
+  addGlobalStyle(css);
+
+  function toast(message) {
+    let container = document.querySelector(".toast-container1");
+    if (!container) {
+      container = document.createElement("div");
+      container.className = "toast-container1";
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement("div");
+    toast.className = "toast1";
+
+    const closeBtn = document.createElement("span");
+    closeBtn.className = "close-btn1";
+    closeBtn.innerHTML = "&times;";
+    closeBtn.onclick = () => {
+      toast.classList.remove("show1");
+      setTimeout(() => toast.remove(), 300);
+    };
+
+    toast.textContent = message;
+    toast.appendChild(closeBtn);
+
+    container.appendChild(toast);
+
+    // Force reflow to trigger animation
+    void toast.offsetWidth;
+    toast.classList.add("show1");
+  }
+
   //////////////////
   const twitters = [
     "binance",
@@ -169,7 +255,7 @@ let success = false;
         );
       }
 
-        if (!document.querySelector(`[data-node-key=bubbleCustom]`)) {
+      if (!document.querySelector(`[data-node-key=bubbleCustom]`)) {
         parent.insertAdjacentHTML(
           "beforeend",
           `
@@ -224,55 +310,76 @@ let success = false;
 
           document.querySelectorAll(".ant-modal-body footer button")[1].click();
         } else {
-            if (urlParams.get("tab")) {
-            realClick(findElementWithDirectText(urlParams.get("tab")))
-            } else {
-
-          document.querySelector(`[data-node-key=history]`).click();
-            }
+          if (urlParams.get("tab")) {
+            realClick(findElementWithDirectText(urlParams.get("tab")));
+          } else {
+            document.querySelector(`[data-node-key=history]`).click();
+          }
         }
 
-          if (document.querySelector(".ant-drawer-body .text-xs.font-medium")) document.querySelector(".ant-drawer-body .text-xs.font-medium").click()
+        if (document.querySelector(".ant-drawer-body .text-xs.font-medium"))
+          document
+            .querySelector(".ant-drawer-body .text-xs.font-medium")
+            .click();
       }
     } catch (error) {
       console.log("error 1", error);
     }
   }, 2000);
 
-
   // dex info
-async function getDexInfo(address) {
-  let paids = [];
-  try {
-    const resp = await fetch(
-      `https://api.dexscreener.com/orders/v1/solana/${address}`
-    );
-    const json = await resp.json();
-    paids = json
-      .filter((item) => item.status === "approved")
-      .map((item) => item.type);
-  } catch (error) {
-    console.log("error", error);
-  }
+  let savePaids = [];
+  let saveBoost = 0;
+  let init = false;
+  async function getDexInfo(address) {
+    let paids = [];
+    try {
+      const resp = await fetch(
+        `https://api.dexscreener.com/orders/v1/solana/${address}`
+      );
+      const json = await resp.json();
+      const tmp = json
+        .filter((item) => item.status === "approved")
+        .map((item) => item.type);
+      paids = tmp.filter(function (item, pos) {
+        return tmp.indexOf(item) == pos;
+      });
+    } catch (error) {
+      console.log("error", error);
+    }
 
-  let boost = 0;
+    let boost = 0;
 
-  try {
-    const resp = await fetch(
-      `https://api.dexscreener.com/token-pairs/v1/solana/${address}`
-    );
+    try {
+      const resp = await fetch(
+        `https://api.dexscreener.com/token-pairs/v1/solana/${address}`
+      );
       const json = await resp.json();
       boost = json[0].boosts.active;
     } catch (error) {
       console.log("error", error);
     }
+
+    if (init) {
+      if (savePaids.length === 0 && paids.length !== 0) {
+        toast(`Dex paid. ${new Date().toLocaleTimeString()}`);
+      } else if (saveBoost === 0 && boost !== 0) {
+        toast(`Dex boost ${saveBoost}. ${new Date().toLocaleTimeString()}`);
+      }
+    }
+    savePaids = paids;
+    saveBoost = boost;
+
+    init = true;
+
     return { paids, boost };
   }
+
   async function insertDexInfo() {
-    console.log('----insertDexInfo');
+    console.log("----insertDexInfo");
     try {
       const box = document.querySelector(
-        "#root > div.ant-layout.ant-layout-has-sider > div.ant-layout.site-layout.w-full.overflow-hidden.no-scrollbar.md\\:h-screen.md\\:min-h-screen.md\\:max-h-screen.md\\:ml-\\[56px\\] > main > div > div.flex.flex-col.flex-1.border.border-grey-500.rounded.w-full.no-scrollbar.bg-grey-900.md\\:overflow-y-auto > div.text-xs.flex.flex-col.md\\:flex-row.items-center.font-medium.text-left > div.flex.justify-between.md\\:justify-end.gap-x-\\[8px\\].md\\:gap-x-4.xl\\:gap-x-8.flex-1.border-t.border-b.border-grey-500.md\\:border-y-0.overflow-x-auto.no-scrollbar.md\\:flex-wrap.w-full.py-1.px-2.md\\:pr-8.grid-cols-4.md\\:grid-cols-5"
+        "div.flex.justify-between.md\\:justify-end.gap-x-\\[8px\\].md\\:gap-x-4.xl\\:gap-x-8.flex-1.border-t.border-b.border-grey-500.md\\:border-y-0.overflow-x-auto.no-scrollbar.md\\:flex-wrap.w-full.py-1.px-2.md\\:pr-8"
       );
       let dex = document.getElementById("custom-dex-info");
       if (!dex) {
@@ -282,11 +389,17 @@ async function getDexInfo(address) {
 
       const { paids, boost } = await getDexInfo(urlParams.get("address"));
       dex.innerHTML = `<div class="flex flex-col items-start">
-      <span class="font-normal text-grey-200 mb-[2px] whitespace-nowrap">Dex paid ${paids.length? '✅': ''}</span>
-      <span class="font-medium text-grey-50" style="font-size: 11px;">${paids.length? paids.join(', '): '❌'}</span></div>
+      <span class="font-normal text-grey-200 mb-[2px] whitespace-nowrap">Dex paid ${
+        paids.length ? "✅" : ""
+      }</span>
+      <span class="font-medium text-grey-50" style="font-size: 11px;">${
+        paids.length ? paids.join(", ") : "❌"
+      }</span></div>
       <div class="flex flex-col items-start" style="margin-left: 32px;">
-      <span class="font-normal text-grey-200 mb-[2px] whitespace-nowrap" >Dex boost ${boost > 0? '⚡️': ''}</span>
-      <span class="font-medium" style="color: #f0b90b;">${boost || '❌'}</span>
+      <span class="font-normal text-grey-200 mb-[2px] whitespace-nowrap" >Dex boost ${
+        boost > 0 ? "⚡️" : ""
+      }</span>
+      <span class="font-medium" style="color: #f0b90b;">${boost || "❌"}</span>
       </div>
       `;
     } catch (error) {
@@ -294,11 +407,8 @@ async function getDexInfo(address) {
     }
   }
 
-  sleep(2000).then(() => insertDexInfo())
+  sleep(2000).then(() => insertDexInfo());
   setInterval(() => {
-    insertDexInfo()
+    insertDexInfo();
   }, 10000);
 })();
-
-
-
