@@ -65,6 +65,55 @@ const css = `
   .toast1 .close-btn1:hover {
     color: #fff;
   }
+
+  .bullx-message {
+      z-index: 999999999999;
+      position: absolute;
+      bottom: 90px;
+      right: 0;
+      box-sizing: border-box;
+      border-radius: 8px;
+      padding-right: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: end;
+    }
+   .bullx-message--config {
+      height: 0px;
+      box-shadow: rgb(0 0 0 / 24%) 0px 3px 8px;
+      background: white;
+      position: relative;
+      display: flex;
+      overflow: hidden;
+    }
+    .bullx-message--open .bullx-message--config {
+      height: 525px;
+      width: 500px;
+      display: flex;
+      padding: 16px 0px 0px 16px;
+      border-radius: 8px;
+      overflow-y: auto;
+          white-space: pre-wrap;
+    }
+      .bullx-message--toggle {
+      background: white;
+      border: 1px solid #d9d9d9;
+      padding: 8px 20px;
+      border-radius: 4px;
+      position: relative;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .bullx-message--close {
+      background: white;
+      border: 1px solid #d9d9d9;
+      padding: 0px 4px;
+      border-radius: 4px;
+      position: relative;
+      cursor: pointer;
+      font-weight: bold;
+      margin-left: 4px;
+    }
 `;
 
 function setNativeValue(element, value) {
@@ -164,6 +213,13 @@ function initClick(element) {
     // Force reflow to trigger animation
     void toast.offsetWidth;
     toast.classList.add("show1");
+
+    const noti = new Notification(document.title, {
+      body: message,
+    });
+    noti.addEventListener("click", async (e) => {
+      window.focus();
+    });
   }
 
   //////////////////
@@ -196,6 +252,38 @@ function initClick(element) {
   ];
 
   const urlParams = new URLSearchParams(window.location.search);
+  const message = urlParams.get("message");
+  if (message) {
+    try {
+      document.body.insertAdjacentHTML(
+        "beforeend",
+        `
+<div class="bullx-message bullx-message--open">
+    <div class="bullx-message--config">${message.trim()}</div>
+    <div style="display: flex;">
+      <button class="bullx-message--toggle">Message</button>
+       <button class="bullx-message--close">x</button>
+    </div>
+    </div>
+`
+      );
+      document.querySelector(".bullx-message--toggle").onclick = (e) => {
+        document
+          .querySelector(".bullx-message")
+          .classList.toggle("bullx-message--open");
+      };
+
+      document.querySelector(".bullx-message--close").onclick = () => {
+        const elementToRemove = document.querySelector(".bullx-message"); // Replace '.my-element' with your actual selector
+
+        if (elementToRemove) {
+          elementToRemove.remove();
+        }
+      };
+    } catch (error) {
+      console.log("show message error", error);
+    }
+  }
 
   setInterval(() => {
     // hide twitter
@@ -355,7 +443,7 @@ function initClick(element) {
         `https://api.dexscreener.com/token-pairs/v1/solana/${address}`
       );
       const json = await resp.json();
-      boost = json[0].boosts.active;
+      boost = json[0].boosts ? json[0].boosts.active : 0;
     } catch (error) {
       console.log("error", error);
     }
@@ -364,7 +452,7 @@ function initClick(element) {
       if (savePaids.length === 0 && paids.length !== 0) {
         toast(`Dex paid. ${new Date().toLocaleTimeString()}`);
       } else if (saveBoost === 0 && boost !== 0) {
-        toast(`Dex boost ${saveBoost}. ${new Date().toLocaleTimeString()}`);
+        toast(`Dex boost ${boost}. ${new Date().toLocaleTimeString()}`);
       }
     }
     savePaids = paids;
@@ -407,7 +495,7 @@ function initClick(element) {
     }
   }
 
-  sleep(2000).then(() => insertDexInfo());
+  sleep(3000).then(() => insertDexInfo());
   setInterval(() => {
     insertDexInfo();
   }, 10000);

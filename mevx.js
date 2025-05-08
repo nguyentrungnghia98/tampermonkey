@@ -8,7 +8,115 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=twitter.com
 // @grant        none
 // ==/UserScript==
+function addGlobalStyle(css) {
+  var head, style;
+  head = document.getElementsByTagName("head")[0];
+  if (!head) {
+    return;
+  }
+  style = document.createElement("style");
+  style.type = "text/css";
+  style.innerHTML = css.replace(/;/g, " !important;");
+  head.appendChild(style);
+}
+const css = `
+    .toast-container1 {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+  }
 
+  .toast1 {
+    position: relative;
+    background-color: #187b47 ;
+    color: #fff;
+    padding: 12px 20px;
+    margin-top: 10px;
+    border-radius: 8px;
+    font-size: 15px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  }
+
+  .toast1.show1 {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .toast1 .close-btn1 {
+    position: absolute;
+    top: 8px;
+    right: 4px;
+    font-weight: bold;
+    font-size: 20px;
+    color: #aaa;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .toast1:hover .close-btn1 {
+    opacity: 1;
+  }
+
+  .toast1 .close-btn1:hover {
+    color: #fff;
+  }
+
+  .bullx-message {
+      z-index: 999999999999;
+      position: absolute;
+      bottom: 90px;
+      right: 0;
+      box-sizing: border-box;
+      border-radius: 8px;
+      padding-right: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: end;
+      color: black;
+    }
+   .bullx-message--config {
+      height: 0px;
+      transition: height 0.1s;
+      box-shadow: rgb(0 0 0 / 24%) 0px 3px 8px;
+      background: white;
+      position: relative;
+      display: flex;
+      overflow: hidden;
+    }
+    .bullx-message--open .bullx-message--config {
+      height: 600px;
+      width: 500px;
+      display: flex;
+      padding: 16px 0px 0px 16px;
+      border-radius: 8px;
+      overflow-y: auto;
+          white-space: pre-wrap;
+    }
+      .bullx-message--toggle {
+      background: white;
+      border: 1px solid #d9d9d9;
+      padding: 8px 20px;
+      border-radius: 4px;
+      position: relative;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .bullx-message--close {
+      background: white;
+      border: 1px solid #d9d9d9;
+      padding: 0px 4px;
+      border-radius: 4px;
+      position: relative;
+      cursor: pointer;
+      font-weight: bold;
+      margin-left: 4px;
+    }
+`;
 function setNativeValue(element, value) {
   const { set: valueSetter } =
     Object.getOwnPropertyDescriptor(element, "value") || {};
@@ -78,8 +186,78 @@ function initClick(element) {
 
 (function () {
   //////////////////
+  addGlobalStyle(css);
 
+  function toast(message) {
+    let container = document.querySelector(".toast-container1");
+    if (!container) {
+      container = document.createElement("div");
+      container.className = "toast-container1";
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement("div");
+    toast.className = "toast1";
+
+    const closeBtn = document.createElement("span");
+    closeBtn.className = "close-btn1";
+    closeBtn.innerHTML = "&times;";
+    closeBtn.onclick = () => {
+      toast.classList.remove("show1");
+      setTimeout(() => toast.remove(), 300);
+    };
+
+    toast.textContent = message;
+    toast.appendChild(closeBtn);
+
+    container.appendChild(toast);
+
+    // Force reflow to trigger animation
+    void toast.offsetWidth;
+    toast.classList.add("show1");
+
+    const noti = new Notification(document.title, {
+      body: message,
+    });
+    noti.addEventListener("click", async (e) => {
+      window.focus();
+    });
+  }
   const urlParams = new URLSearchParams(window.location.search);
+
+  const message = urlParams.get("message");
+  if (message) {
+    try {
+      document.body.insertAdjacentHTML(
+        "beforeend",
+        `
+<div class="bullx-message bullx-message--open">
+    <div class="bullx-message--config">${message.trim()}</div>
+    <div style="display: flex;">
+      <button class="bullx-message--toggle">Message</button>
+       <button class="bullx-message--close">x</button>
+    </div>
+    </div>
+`
+      );
+      document.querySelector(".bullx-message--toggle").onclick = (e) => {
+        document
+          .querySelector(".bullx-message")
+          .classList.toggle("bullx-message--open");
+      };
+
+      document.querySelector(".bullx-message--close").onclick = () => {
+        const elementToRemove = document.querySelector(".bullx-message"); // Replace '.my-element' with your actual selector
+
+        if (elementToRemove) {
+          elementToRemove.remove();
+        }
+      };
+    } catch (error) {
+      console.log("show message error", error);
+    }
+  }
+
   if (location.href.includes("mevx.io/solana/")) {
     initClick(() => {
       const matched = findElementWithDirectText("Auto TP/SL");
@@ -98,6 +276,10 @@ function initClick(element) {
     if (location.href.includes("/base/")) return "base";
     if (location.href.includes("/eth/")) return "eth";
   }
+
+  let savePaids = [];
+  let saveBoost = 0;
+  let init = false;
   async function getDexInfo(address) {
     let paids = [];
     try {
@@ -123,6 +305,18 @@ function initClick(element) {
     } catch (error) {
       console.log("error", error);
     }
+
+    if (init) {
+      if (savePaids.length === 0 && paids.length !== 0) {
+        toast(`Dex paid. ${new Date().toLocaleTimeString()}`);
+      } else if (saveBoost === 0 && boost !== 0) {
+        toast(`Dex boost ${boost}. ${new Date().toLocaleTimeString()}`);
+      }
+    }
+    savePaids = paids;
+    saveBoost = boost;
+
+    init = true;
     return { paids, boost };
   }
 
