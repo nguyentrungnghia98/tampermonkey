@@ -17,11 +17,11 @@
   .custom-gmgn-bot {
       z-index: 999999999999;
       position: absolute;
-      bottom: 90px;
+      bottom: 38px;
       right: 0;
       box-sizing: border-box;
       border-radius: 8px;
-      padding-right: 16px;
+      padding-right: 10px;
       display: flex;
       flex-direction: column;
       align-items: end;
@@ -37,7 +37,7 @@
     }
     .custom-gmgn-bot--open .custom-gmgn-bot--config {
       height: 700px;
-      width: 800px;
+      width: 1000px;
       display: flex;
       padding: 12px 16px 0;
       border-radius: 8px;
@@ -47,11 +47,11 @@
         .custom-gmgn-bot--toggle {
       background: white;
       border: 1px solid #d9d9d9;
-      padding: 8px 20px;
+      padding: 4px 12px;
       border-radius: 4px;
       position: relative;
       cursor: pointer;
-      font-weight: bold;
+      color: black;
     }
     .custom-gmgn-bot--close {
       background: white;
@@ -142,14 +142,14 @@
         .querySelector(".custom-gmgn-bot")
         .classList.toggle("custom-gmgn-bot--open");
     };
-  
+
     document.querySelector(".custom-gmgn-bot--close").onclick = () => {
       const elementToRemove = document.querySelector(".custom-gmgn-bot"); // Replace '.my-element' with your actual selector
-  
+
       if (elementToRemove) {
         elementToRemove.remove();
       }
-    }; 
+    };
 
 
   // Helper function to create elements
@@ -266,6 +266,22 @@
     const allResultsList = createElement('div', { className: 'custom-tool-result-list' });
     const loadmore = createElement('div', { className: 'custom-tool-result-loadmore' });
 
+     // filter
+      const filterMinVol = createElement('input', { type: 'text', placeholder: 'Min volume' });
+      const filterMaxVol = createElement('input', { type: 'text', placeholder: 'Max volume' });
+        const filterNumTransBuy = createElement('input', { type: 'text', placeholder: 'Num trans buy' });
+      const filterNumTransSell = createElement('input', { type: 'text', placeholder: 'Num trans sell' });
+      const filterNumTrans = createElement('input', { type: 'text', placeholder: 'Num trans' });
+      const filterGroup = createElement('div', { style: "display: flex;gap: 10px;" }, [
+      createElement('div', { textContent: 'Filter:' }),
+          createElement('div', { className: 'custom-tool-input-group' }, [filterMinVol]),
+          createElement('div', { className: 'custom-tool-input-group' }, [filterMaxVol]),
+           createElement('div', { className: 'custom-tool-input-group' }, [filterNumTransBuy]),
+          createElement('div', { className: 'custom-tool-input-group' }, [filterNumTransSell]),
+              createElement('div', { className: 'custom-tool-input-group' }, [filterNumTrans]),
+    ]);
+
+
     // Append all elements to the container
     container.appendChild(tokenAddressGroup);
     group.appendChild(startTimeGroup);
@@ -276,6 +292,8 @@
     container.appendChild(group);
     container.appendChild(startTimeButtonGroup);
     container.appendChild(endTimeButtonGroup);
+    container.appendChild(filterGroup);
+
     container.appendChild(createElement('div', { textContent: 'Top 5 Volume:' }));
     container.appendChild(top5List);
     container.appendChild(createElement('div', { textContent: 'All Results:', style: "margin-top: 20px;" }));
@@ -352,22 +370,47 @@
           quote_amount: item.quote_amount,
           quote_symbol: item.quote_symbol,
           maker: item.maker,
+            price_usd: item.price_usd,
         }));
 
         data = cursor? data.concat(...tmp): tmp;
+
+          const countWalletSell = {};
+          const countWalletBuy = {};
+          data.forEach(item => {
+              if (item.event === 'sell') {
+              countWalletSell[item.maker] = (countWalletSell[item.maker] || 0) + 1
+              } else {
+              countWalletBuy[item.maker] = (countWalletBuy[item.maker] || 0) + 1
+              }
+          });
+
+          const filterMinVolValue = Number(filterMinVol.value.trim());
+          const filterMaxVolValue = Number(filterMaxVol.value.trim());
+            const filterNumTransBuyValue = Number(filterNumTransBuy.value.trim());
+            const filterNumTransSellValue = Number(filterNumTransSell.value.trim());
+            const filterNumTransValue = Number(filterNumTrans.value.trim());
+          const filterData = data.filter(item => (filterMinVolValue? Number(item.quote_amount) >= filterMinVolValue: true) && (filterMaxVolValue? Number(item.quote_amount) <= filterMaxVolValue: true)
+                                         && (filterNumTransBuyValue? countWalletBuy[item.maker] === filterNumTransBuyValue: true)
+                                        && (filterNumTransSellValue? countWalletSell[item.maker] === filterNumTransSellValue: true)
+                                        && (filterNumTransValue? countWalletBuy[item.maker] + countWalletSell[item.maker] === filterNumTransValue: true))
         // Display top 5 results
         top5List.innerHTML = '';
-        [...data]
+
+
+        [...filterData]
           .sort((a, b) => Number(b.quote_amount) - Number(a.quote_amount))
           .slice(0, 5)
           .forEach((item) => {
-            top5List.appendChild(createResultItem(item));
+            top5List.appendChild(createResultItem(item, countWalletSell, countWalletBuy));
           });
 
         if (cursor) allResultsList.innerHTML = '';
+
+
         // Display all results
-        data.forEach((item) => {
-          allResultsList.appendChild(createResultItem(item));
+        filterData.forEach((item) => {
+          allResultsList.appendChild(createResultItem(item, countWalletSell, countWalletBuy));
         });
 
 
@@ -387,7 +430,7 @@
     }
 
     // Function to create a result item
-    function createResultItem(item) {
+    function createResultItem(item, countWalletSell, countWalletBuy) {
       return createElement('div', { className: 'custom-tool-item' }, [
         createElement('div', { textContent: formatDate(item.timestamp), style: "width: 150px;" }),
         createElement('div', {
@@ -398,9 +441,13 @@
           textContent: `${Number(item.quote_amount).toFixed(3)} ${item.quote_symbol}`,
           style: "width: 150px;"
         }),
+          createElement('div', {
+          textContent: `${Number(item.price_usd).toFixed(8)}`,
+          style: "width: 150px;"
+        }),
         createElement('a', {
-          href: `https://neo.bullx.io/portfolio/${item.maker}`,
-          textContent: item.maker,
+          href: `https://gmgn.ai/sol/address/${item.maker}`,
+          textContent: `${item.maker} (${countWalletBuy[item.maker] || 0},${countWalletSell[item.maker] || 0})`,
           target: '_blank',
         }),
       ]);
