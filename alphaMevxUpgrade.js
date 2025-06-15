@@ -1,14 +1,13 @@
 // ==UserScript==
-// @name         gmgnUpdate
+// @name         alphaMevxUpgrade
 // @namespace    http://tampermonkey.net/
 // @version      2.0
 // @description
 // @author       You
-// @match        https://gmgn.ai/*
+// @match        https://alpha.mevx.io/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=twitter.com
 // @grant        none
 // ==/UserScript==
-
 function addGlobalStyle(css) {
   var head, style;
   head = document.getElementsByTagName("head")[0];
@@ -70,17 +69,20 @@ const css = `
   .bullx-message {
       z-index: 999999999999;
       position: absolute;
-      bottom: 38px;
-      left: 0;
+      bottom: 8px;
+      right: 0;
       box-sizing: border-box;
       border-radius: 8px;
-      padding-left: 10px;
+      padding-right: 16px;
       display: flex;
       flex-direction: column;
+      align-items: end;
       color: black;
+      font-size: 13px;
     }
    .bullx-message--config {
       height: 0px;
+      transition: height 0.1s;
       box-shadow: rgb(0 0 0 / 24%) 0px 3px 8px;
       background: white;
       position: relative;
@@ -88,8 +90,8 @@ const css = `
       overflow: hidden;
     }
     .bullx-message--open .bullx-message--config {
-      height: 400px;
-      width: 260px;
+      height: 350px;
+      width: 300px;
       display: flex;
       padding: 16px 0px 0px 16px;
       border-radius: 8px;
@@ -116,11 +118,75 @@ const css = `
       margin-left: 4px;
     }
 `;
+function setNativeValue(element, value) {
+  const { set: valueSetter } =
+    Object.getOwnPropertyDescriptor(element, "value") || {};
+  const prototype = Object.getPrototypeOf(element);
+  const { set: prototypeValueSetter } =
+    Object.getOwnPropertyDescriptor(prototype, "value") || {};
 
+  if (prototypeValueSetter && valueSetter !== prototypeValueSetter) {
+    prototypeValueSetter.call(element, value);
+  } else if (valueSetter) {
+    valueSetter.call(element, value);
+  } else {
+    throw new Error("Could not set value");
+  }
+
+  element.dispatchEvent(new Event("input", { bubbles: true }));
+}
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+function findElementWithDirectText(text) {
+  const elements = document.querySelectorAll("*");
+  return Array.from(elements).find((el) => {
+    // Lấy text node con trực tiếp của element
+    for (let node of el.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.includes(text)) {
+        return true;
+      }
+    }
+    return false;
+  });
+}
+
+function realClick(el) {
+  if (!el) return;
+  const event = new MouseEvent("click", {
+    view: window,
+    bubbles: true,
+    cancelable: true,
+  });
+  el.dispatchEvent(event);
+}
+// Example usage
+
+function initClick(element) {
+  let success = false;
+  const interval = setInterval(async () => {
+    if (success) {
+      clearInterval(interval);
+      return;
+    }
+
+    try {
+      const elementValue = typeof element === "function" ? element() : element;
+      if (elementValue) {
+        realClick(elementValue);
+      } else {
+        throw new Error("not found");
+      }
+      success = true;
+    } catch (error) {
+      console.log("error 1", error);
+    }
+  }, 1000);
+}
+
 (function () {
+  //////////////////
   addGlobalStyle(css);
 
   function toast(message) {
@@ -162,19 +228,12 @@ function sleep(ms) {
 
   const message = urlParams.get("message");
   if (message && message.trim() !== 'undefined') {
-    const content = message
-      .trim()
-      .split("\n")
-      .filter(
-        (item) => !item.startsWith("MCap:") && !item.includes("Dex Paid:")
-      )
-      .join("\n");
     try {
       document.body.insertAdjacentHTML(
         "beforeend",
         `
 <div class="bullx-message bullx-message--open">
-    <div class="bullx-message--config">${content}</div>
+    <div class="bullx-message--config">${message.trim()}</div>
     <div style="display: flex;">
       <button class="bullx-message--toggle">Message</button>
        <button class="bullx-message--close">x</button>
@@ -200,10 +259,24 @@ function sleep(ms) {
     }
   }
 
-  /////////
+  if (location.href.includes("mevx.io/solana/")) {
+      setTimeout(() => {
+      initClick(() => {
+      const matched = findElementWithDirectText("Auto TPSL");
+      if (matched) {
+        return matched.parentNode.querySelector("button");
+      }
+    });
+    initClick(() => findElementWithDirectText("Holders"));
+    initClick(() => findElementWithDirectText("5m"));
+      },2000)
+    
+  }
+
+  // dex info
   function getChain() {
     if (location.href.includes("/bsc/")) return "bsc";
-    if (location.href.includes("/sol/")) return "solana";
+    if (location.href.includes("/solana/")) return "solana";
     if (location.href.includes("/base/")) return "base";
     if (location.href.includes("/eth/")) return "eth";
   }
@@ -232,7 +305,7 @@ function sleep(ms) {
         `https://api.dexscreener.com/token-pairs/v1/${getChain()}/${address}`
       );
       const json = await resp.json();
-      boost = json[0].boosts? json[0].boosts.active: 0;
+      boost = json[0].boosts.active;
     } catch (error) {
       console.log("error", error);
     }
@@ -252,10 +325,12 @@ function sleep(ms) {
   }
 
   function getAddress() {
-    if (!location.href.startsWith("https://gmgn.ai/sol/token/")) return "";
     try {
-      const address = location.pathname.split("/").slice(-1)[0];
-        return address.split("_").slice(-1)[0]
+      const refLink =
+        findElementWithDirectText("REF link").parentNode.querySelector(
+          "span"
+        ).textContent;
+      return refLink.split("/").slice(-1)[0].split("?")[0];
     } catch (error) {
       console.log("getAddress error", error);
     }
@@ -266,32 +341,32 @@ function sleep(ms) {
       const address = getAddress();
       if (!address) throw new Error("address not found!");
       const box = document.querySelector(
-        "#GlobalScrollDomId  div.flex.justify-between.items-center.px-16px.overflow-auto.gap-10px.border-b-line-100 > div.flex.items-end"
+        "main div.flex.flex-row.gap-4.overflow-x-auto.px-1.py-2.lg\\:px-3"
       );
       let dexPaid = document.getElementById("custom-dex-paid");
       let dexBoost = document.getElementById("custom-dex-boost");
       if (!dexPaid || !dexBoost) {
-        box.innerHTML = `<div class="flex flex-col text-sm leading-[16px] font-medium" style="    margin-right: 16px;" id="custom-dex-paid"></div><div class="flex flex-col text-sm leading-[16px] font-medium" style="    margin-right: 16px;" id="custom-dex-boost"></div>${box.innerHTML}`;
+        box.innerHTML = `${box.innerHTML}<div class="hidden flex-col gap-1 md:flex" id="custom-dex-paid"></div><div class="hidden flex-col gap-1 md:flex" style="" id="custom-dex-boost"></div>`;
         dexPaid = document.getElementById("custom-dex-paid");
         dexBoost = document.getElementById("custom-dex-boost");
       }
 
       const { paids, boost } = await getDexInfo(address);
 
-      dexPaid.innerHTML = `<div class="flex items-center text-text-300 font-normal whitespace-nowrap gap-x-2px"><span>Dex paid${
+      dexPaid.innerHTML = `<p class="text-xs leading-[18px] font-medium text-gray-300">Dex paid${
         paids.length ? "✅" : ""
-      }</span></div><div>${
+      }</p>${
         paids.length
-          ? paids.join(", ")
+          ? paids.map((item) => `<h1 class="text-[11px]">${item}</h1>`).join("")
           : "❌"
-      }</div>`;
+      }`;
 
-      dexBoost.innerHTML = `<div class="flex items-center text-text-300 font-normal whitespace-nowrap gap-x-2px"><span>Dex boost ${
+      dexBoost.innerHTML = `<p class="text-xs leading-[18px] font-medium text-gray-300">Dex boost ${
         boost > 0 ? "⚡️" : ""
-      }</span></div><div>
+      }</p>
      <h1 class="text-[14px] uppercase font-bold" style="color: #f0b90b;">${
        boost || "❌"
-     }</h1></div>`;
+     }</h1>`;
     } catch (error) {
       console.log("insertDexInfo error", error);
     }
@@ -301,51 +376,4 @@ function sleep(ms) {
   setInterval(() => {
     insertDexInfo();
   }, 10000);
-
-  ////////
-
-  setTimeout(() => {
-    if (location.href.includes("sol/address"))
-      document.getElementById("tabs-leftTabs--tab-0").click();
-  }, 1000);
-  setInterval(() => {
-    try {
-      if (location.href.includes("sol/address")) {
-        const rows = document.querySelectorAll(
-          "#tabs-leftTabs--tabpanel-0 .g-table-tbody .g-table-row"
-        );
-        rows.forEach((row) => {
-          const a = row.querySelector("a");
-          if (!a.href.includes("bullx")) {
-            const href = `https://neo.bullx.io/terminal?chainId=1399811149&address=${
-              a.href.split("/").slice(-1)[0]
-            }&maker=${
-              location.href.split("/").slice(-1)[0].split("_").slice(-1)[0]
-            }`;
-            a.href = href;
-            a.childNodes[1].href = href;
-          }
-        });
-      }
-      if (location.href.includes("base/address")) {
-        const rows = document.querySelectorAll(
-          "#tabs-leftTabs--tabpanel-0 .g-table-tbody .g-table-row"
-        );
-        rows.forEach((row) => {
-          const a = row.querySelector("a");
-          if (!a.href.includes("maker")) {
-            const href = `https://gmgn.ai/base/token/${
-              a.href.split("/").slice(-1)[0]
-            }?maker1=${
-              location.href.split("/").slice(-1)[0].split("_").slice(-1)[0]
-            }`;
-            a.href = href;
-            a.childNodes[1].href = href;
-          }
-        });
-      }
-    } catch (error) {
-      console.log("error", error);
-    }
-  }, 100);
 })();

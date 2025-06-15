@@ -253,7 +253,7 @@ function initClick(element) {
 
   const urlParams = new URLSearchParams(window.location.search);
   const message = urlParams.get("message");
-  if (message) {
+  if (message && message.trim() !== 'undefined') {
     try {
       document.body.insertAdjacentHTML(
         "beforeend",
