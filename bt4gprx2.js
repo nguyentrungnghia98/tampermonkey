@@ -1,10 +1,10 @@
 // ==UserScript==
-// @name         bt4gprx
+// @name         bt4gprx2
 // @namespace    http://tampermonkey.net/
 // @version      2.0
 // @description  auto retweet, follow, comment
 // @author       You
-// @match        https://bt4gprx.com/magnet/*
+// @match        https://bt4gprx.com/search*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=twitter.com
 // @grant        none
 // ==/UserScript==
@@ -116,23 +116,22 @@ function toast(message) {
 
  setTimeout(() => {
 try {
-    document.querySelector(".navbar  .container .navbar-brand").insertAdjacentHTML("afterend", `<button id="copy-magnet">Copy</button><button id="search-magnet">Search</button>`)
-    const href = document.querySelector(".card-body a").href
-    const magnet = href.split("/").slice(-1)[0].split("?")[0];
-    const value = `magnet:?xt=urn:btih:${magnet}`;
+    document.querySelector(".navbar  .container .navbar-brand").insertAdjacentHTML("afterend", `<button id="search-magnet">Search</button>`)
 
-    document.querySelector("#copy-magnet").addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        toast("Copied!")
-    navigator.clipboard.writeText(value);
-})
     document.querySelector("#search-magnet").addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        window.open(`google.com/search?q=${code}`)
-})
 
+        window.open(`https://google.com/search?q=fc2 ppv ${document.querySelector("#search").value}`)
+})
+    document.querySelector(".navbar  .container .navbar-brand").insertAdjacentHTML("afterend", `<button id="search-magnet">Search fc2ppvdb</button>`)
+
+    document.querySelector("#search-magnet").addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        window.open(`https://fc2ppvdb.com/articles/${document.querySelector("#search").value}`)
+})
 } catch(error){
 console.log(error)
 }
