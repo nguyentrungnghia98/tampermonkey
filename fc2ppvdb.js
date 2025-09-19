@@ -55,9 +55,6 @@ const css = `
     }
     
 `;
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function findElementWithDirectText(text, parent) {
   const elements = (parent || document).querySelectorAll("*");
@@ -130,7 +127,7 @@ async function getJavDetail(code) {
     const imgSrc = img? img.src: '';
 
     const label = findElementWithDirectText("Seller:", doc)
-    const sellerEl = label.parentNode.querySelector("a")
+    const sellerEl = label? label.parentNode.querySelector("a"): null;
     const seller = sellerEl? sellerEl.innerText: '';
     const newData = {img: imgSrc, seller}
 
@@ -142,103 +139,127 @@ async function getJavDetail(code) {
 }
 
 (function () {
+  "use strict";
   addGlobalStyle(css);
 
   setInterval(() => {
-    if (!document.querySelector(".custom-list")) {
-      try {
-        let codes = [];
-        try {
-          codes = document.querySelector("div > main > div > section .px-2.py-6 > div.flex.flex-nowrap").innerText.trim().split("\n");
-        } catch (error) {}
-        if (!codes.length) {
-          try {
-          codes = document.querySelector("div > main > div > section div.flex.flex-wrap").innerText.trim().split("\n");
-          } catch (error) {}
-        }
-        console.log('codes', codes);
-        if (codes.filter(item => Boolean(item)).length) {
+    let list = (
+      document.querySelector(".flex.flex-wrap.-m-4.pb-4") ||
+      document.querySelector(".flex.flex-wrap.-m-4.py-4")
+    ).children;
+    if (!list) return;
+
+    const stored = localStorage.getItem("custom-watched");
+    const newValue = stored ? JSON.parse(stored) : {};
+    [...list].forEach((item) => {
+      let code = item.children[0].querySelector("span").innerText;
+      if (!item.querySelector(".relative .custom-btn-code")) {
+        let btn = document.createElement("button");
+        btn.classList.add(
+          newValue[code] ? "custom-btn-code-watched" : "custom-btn-code"
+        );
+        btn.innerHTML = newValue[code] ? "Watched" : `Open`;
+        //btn.target = "_blank";
+        // btn.href = `https://missav123.com/dm13/en/fc2-ppv-${code}`
+        // btn.href = `https://123av.com/en/dm2/v/fc2-ppv-${code}`
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          window.open(`https://123av.ws/en/dm4/v/fc2-ppv-${code}`);
+          window.open(`https://bt4gprx.com/search?q=${code}`);
+
           const stored = localStorage.getItem("custom-watched");
-          const newValue = stored? JSON.parse(stored): {};
-
-          document.querySelector("main > div > section").insertAdjacentHTML("beforeend", `<div id="custom-list" class="custom-list">
-          ${codes.map(code => `<div id="custom-${code}" class="custom-code">
-            <button id="custom-btn-${code}" class="${newValue[code]? "custom-btn-code-watched": "custom-btn-code"}">${newValue[code]? "Watched": `Open`}</button>
-            </div>`).join("")}
-            </div>`);
-
-          codes.map(code => {
-            document.getElementById(`custom-btn-${code}`).addEventListener("click", (e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              window.open(`https://123av.ws/en/dm4/v/fc2-ppv-${code}`)
-              window.open(`https://bt4gprx.com/search?q=${code}`)
-
-              const stored = localStorage.getItem("custom-watched");
-                  const newValue = stored? JSON.parse(stored): {};
-                  newValue[code] = "true";
-                  localStorage.setItem("custom-watched", JSON.stringify(newValue))
-            })
-
-            getJavDetail(code).then(resp => {
-              if (resp) {
-                const item = document.getElementById(`custom-${code}`)
-                if (item) {
-                  item.insertAdjacentHTML("beforeend", `
-                    <img src="${resp.img}" alt=""/>
-                    <div>${code}</div>
-                    <div>${resp.seller}</div>
-                    `)
-                }
-              }
-            })
-          })
-        }
-      } catch (error) {
-        console.log(error)
+          const newValue = stored ? JSON.parse(stored) : {};
+          newValue[code] = "true";
+          localStorage.setItem("custom-watched", JSON.stringify(newValue));
+        });
+        getJavDetail(code).then(resp => {
+          if (resp && resp.img) {
+            const img = item.querySelector("img");
+            if (img) {
+              img.src = resp.img;
+            }
+          }
+        })
+        item.querySelector(".relative").insertAdjacentElement("beforeend", btn);
       }
-    }
+    });
   }, 1000);
 })();
 
+// function sleep(ms) {
+//   return new Promise((resolve) => setTimeout(resolve, ms));
+// }
 
+// function findElementWithDirectText(text, parent) {
+//   const elements = (parent || document).querySelectorAll("*");
+//   return Array.from(elements).find((el) => {
+//     // Lấy text node con trực tiếp của element
+//     for (let node of el.childNodes) {
+//       if (node.nodeType === Node.TEXT_NODE && node.textContent.includes(text)) {
+//         return true;
+//       }
+//     }
+//     return false;
+//   });
+// }
 
 // (function () {
-//   "use strict";
 //   addGlobalStyle(css);
 
 //   setInterval(() => {
+//     if (!document.querySelector(".custom-list")) {
+//       try {
+//         let codes = [];
+//         try {
+//           codes = document.querySelector("div > main > div > section .px-2.py-6 > div.flex.flex-nowrap").innerText.trim().split("\n");
+//         } catch (error) {}
+//         if (!codes.length) {
+//           try {
+//           codes = document.querySelector("div > main > div > section div.flex.flex-wrap").innerText.trim().split("\n");
+//           } catch (error) {}
+//         }
+//         console.log('codes', codes);
+//         if (codes.filter(item => Boolean(item)).length) {
+//           const stored = localStorage.getItem("custom-watched");
+//           const newValue = stored? JSON.parse(stored): {};
 
-//     let list = (document.querySelector(".flex.flex-wrap.-m-4.pb-4") || document.querySelector(".flex.flex-wrap.-m-4.py-4")).children;
-//       if (!list) return;
+//           document.querySelector("main > div > section").insertAdjacentHTML("beforeend", `<div id="custom-list" class="custom-list">
+//           ${codes.map(code => `<div id="custom-${code}" class="custom-code">
+//             <button id="custom-btn-${code}" class="${newValue[code]? "custom-btn-code-watched": "custom-btn-code"}">${newValue[code]? "Watched": `Open`}</button>
+//             </div>`).join("")}
+//             </div>`);
 
-//       const stored = localStorage.getItem("custom-watched");
-//        const newValue = stored? JSON.parse(stored): {};
-// [...list].forEach(item => {
-//  let code = item.children[0].querySelector("span").innerText
-// if (!item.querySelector(".relative .custom-btn-code")) {
-//     let btn = document.createElement("button");
-//   btn.classList.add(newValue[code]? "custom-btn-code-watched": "custom-btn-code");
-//   btn.innerHTML = newValue[code]? "Watched": `Open`;
-//     //btn.target = "_blank";
-//    // btn.href = `https://missav123.com/dm13/en/fc2-ppv-${code}`
-//     // btn.href = `https://123av.com/en/dm2/v/fc2-ppv-${code}`
-// btn.addEventListener("click", (e) => {
-//     e.preventDefault()
-//     e.stopPropagation()
-//   window.open(`https://123av.ws/en/dm4/v/fc2-ppv-${code}`)
-// window.open(`https://bt4gprx.com/search?q=${code}`)
+//           codes.map(code => {
+//             document.getElementById(`custom-btn-${code}`).addEventListener("click", (e) => {
+//               e.preventDefault()
+//               e.stopPropagation()
+//               window.open(`https://123av.ws/en/dm4/v/fc2-ppv-${code}`)
+//               window.open(`https://bt4gprx.com/search?q=${code}`)
 
-//     const stored = localStorage.getItem("custom-watched");
-//         const newValue = stored? JSON.parse(stored): {};
-//         newValue[code] = "true";
-//         localStorage.setItem("custom-watched", JSON.stringify(newValue))
-//   });
-// item.querySelector(".relative").insertAdjacentElement('beforeend', btn);
-// }
+//               const stored = localStorage.getItem("custom-watched");
+//                   const newValue = stored? JSON.parse(stored): {};
+//                   newValue[code] = "true";
+//                   localStorage.setItem("custom-watched", JSON.stringify(newValue))
+//             })
 
-// })
-
-// }, 1000)
-
+//             getJavDetail(code).then(resp => {
+//               if (resp) {
+//                 const item = document.getElementById(`custom-${code}`)
+//                 if (item) {
+//                   item.insertAdjacentHTML("beforeend", `
+//                     <img src="${resp.img}" alt=""/>
+//                     <div>${code}</div>
+//                     <div>${resp.seller}</div>
+//                     `)
+//                 }
+//               }
+//             })
+//           })
+//         }
+//       } catch (error) {
+//         console.log(error)
+//       }
+//     }
+//   }, 1000);
 // })();
